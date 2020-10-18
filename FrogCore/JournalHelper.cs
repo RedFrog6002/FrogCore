@@ -65,15 +65,15 @@ namespace FrogCore
             orig(self);
             if (playerData.haskilled || !playerData.Hidden)
             {
-                self.SetIntInternal("journalEntriesTotal", self.GetIntInternal("journalEntriesTotal") + 1);
+                self.SetInt("journalEntriesTotal", self.GetInt("journalEntriesTotal") + 1);
             }
             if (playerData.haskilled)
             {
-                self.SetIntInternal("journalEntriesCompleted", self.GetIntInternal("journalEntriesCompleted") + 1);
+                self.SetInt("journalEntriesCompleted", self.GetInt("journalEntriesCompleted") + 1);
             }
             if (playerData.killsremaining == 0)
             {
-                self.SetIntInternal("journalNotesCompleted", self.GetIntInternal("journalNotesCompleted") + 1);
+                self.SetInt("journalNotesCompleted", self.GetInt("journalNotesCompleted") + 1);
             }
         }
         private void JournalList_BuildEnemyList(On.JournalList.orig_BuildEnemyList orig, JournalList self)

@@ -11,6 +11,7 @@ using Vasi;
 using ModCommon;
 using System.Collections;
 using System.IO;
+using Logger = Modding.Logger;
 
 namespace FrogCore
 {
@@ -29,9 +30,9 @@ namespace FrogCore
 
         public string NPC_DREAM_KEY = "MyNpc_Dreamnail";
 
-        public static void Log(object o)
+        public void Log(object o)
         {
-            Modding.Logger.Log(string.Format("[{0}]: ", Assembly.GetExecutingAssembly().GetName().Name) + " DialogueNPC: " + o);
+            Logger.Log($"[{GetType().FullName.Replace(".", "]:[")}] - {o}");
         }
         public void Start()
         {
