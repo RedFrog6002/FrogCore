@@ -54,6 +54,7 @@ namespace FrogCore
         public Sprite portraitsprite;
         public Sprite picturesprite;
         public Sprite CustomSprite;
+        public JournalList ListInstance { get; private set; }
         public int entrynumber { get; private set; } = 0;
         public static int CustomEntries { get; private set; } = 0;
         public static List<JournalTracker> trackers { get; private set; } = new List<JournalTracker>();
@@ -79,6 +80,7 @@ namespace FrogCore
         private void JournalList_BuildEnemyList(On.JournalList.orig_BuildEnemyList orig, JournalList self)
         {
             #region modifyFSM
+            ListInstance = self;
             var fsm = self.gameObject.LocateMyFSM("Item List Control");
             var skip = false;
             foreach(var state in fsm.FsmStates)
@@ -94,8 +96,10 @@ namespace FrogCore
                 var state = fsm.CreateState("Custom Check");
                 void Check()
                 {
-                    var currentitem = self.list[fsm.FsmVariables.GetFsmInt("Current Item").Value];
+                    var list = ReflectionHelper.GetAttr<JournalList, GameObject[]>(self, "currentList");
+                    var currentitem = list[fsm.FsmVariables.GetFsmInt("Current Item").Value];
                     if (currentitem.GetComponent<JournalEntryStats>().grimmEntry && currentitem.GetComponent<JournalEntryStats>().warriorGhost)
+                    {
                         if (currentitem.GetComponent<JournalTracker>() != null)
                             if (currentitem.GetComponent<JournalTracker>().CustomEntrySprite != null)
                             {
@@ -103,6 +107,11 @@ namespace FrogCore
                                 fsm.SetState("Custom");
                                 return;
                             }
+                    }
+                    else
+                    {
+                        fsm.SetState("Normal");
+                    }
                     fsm.SetState("Type");
                 }
                 state.AddMethod(Check);
@@ -110,42 +119,54 @@ namespace FrogCore
                 fsm.ChangeTransition("Get Notes", "FINISHED", "Custom Check");
             }
             #endregion
-            entrynumber = self.list.Length + 1;
-            var go = GameObject.Instantiate(self.list[0]);
-            var listitem = go.GetComponent<JournalEntryStats>();
-            listitem.convoName = "CustomJournal" + entrynumber;
-            listitem.sprite = picturesprite;
-            go.transform.Find("Portrait").GetComponent<SpriteRenderer>().sprite = portraitsprite;
-            go.transform.Find("Name").GetComponent<SetTextMeshProGameText>().convName = "CustomJournal" + entrynumber;
-            listitem.playerDataName = "CustomJournal" + entrynumber;
-            switch (EType)
+            var alreadyadded = false;
+            foreach (var v in self.list)
             {
-                case EntryType.Normal:
-                    listitem.warriorGhost = false;
-                    listitem.grimmEntry = false;
-                    break;
-                case EntryType.Dream:
-                    listitem.warriorGhost = true;
-                    listitem.grimmEntry = false;
-                    break;
-                case EntryType.Grimm:
-                    listitem.warriorGhost = false;
-                    listitem.grimmEntry = true;
-                    break;
-                case EntryType.Custom:
-                    listitem.warriorGhost = true;
-                    listitem.grimmEntry = true;
-                    break;
+                if (entrynumber != 0)
+                {
+                    if (v.GetComponent<JournalEntryStats>().convoName == "CustomJournal" + entrynumber)
+                        alreadyadded = true;
+                }
             }
-            if (addingtracker)
+            if (!alreadyadded)
             {
-                tracker = go.AddComponent<JournalTracker>();
-                trackers.Add(tracker);
-                go.GetComponent<JournalTracker>().entrynumber = entrynumber;
-                if (CustomSprite != null && EType == EntryType.Custom)
-                    go.GetComponent<JournalTracker>().CustomEntrySprite = CustomSprite;
+                entrynumber = self.list.Length + 1;
+                var go = GameObject.Instantiate(self.list[0]);
+                var listitem = go.GetComponent<JournalEntryStats>();
+                listitem.convoName = "CustomJournal" + entrynumber;
+                listitem.sprite = picturesprite;
+                go.transform.Find("Portrait").GetComponent<SpriteRenderer>().sprite = portraitsprite;
+                go.transform.Find("Name").GetComponent<SetTextMeshProGameText>().convName = "CustomJournal" + entrynumber;
+                listitem.playerDataName = "CustomJournal" + entrynumber;
+                switch (EType)
+                {
+                    case EntryType.Normal:
+                        listitem.warriorGhost = false;
+                        listitem.grimmEntry = false;
+                        break;
+                    case EntryType.Dream:
+                        listitem.warriorGhost = true;
+                        listitem.grimmEntry = false;
+                        break;
+                    case EntryType.Grimm:
+                        listitem.warriorGhost = false;
+                        listitem.grimmEntry = true;
+                        break;
+                    case EntryType.Custom:
+                        listitem.warriorGhost = true;
+                        listitem.grimmEntry = true;
+                        break;
+                }
+                if (addingtracker)
+                {
+                    tracker = go.AddComponent<JournalTracker>();
+                    trackers.Add(tracker);
+                    go.GetComponent<JournalTracker>().entrynumber = entrynumber;
+                    if (CustomSprite != null && EType == EntryType.Custom)
+                        go.GetComponent<JournalTracker>().CustomEntrySprite = CustomSprite;
+                }
+                self.list = self.list.Append(go).ToArray();
             }
-            self.list = self.list.Append(go).ToArray();
             orig(self);
             PlayerData.instance.CountJournalEntries();
         }
