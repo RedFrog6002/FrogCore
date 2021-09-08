@@ -7,18 +7,18 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
-using Vasi;
-using ModCommon;
 using System.Collections;
 using System.IO;
+using FrogCore.Ext;
 using Logger = Modding.Logger;
+using FrogCore.Fsm;
 
 namespace FrogCore
 {
     /// <summary>
     /// Allows for easily adding a npc. Add this monobehavior to a clone of the   "_NPCs\Zote Final Scene\Zote Final"   object in the   "Town"   scene and fill out all of the variables to get it working
     /// </summary>
-    class DialogueNPC : MonoBehaviour
+    public class DialogueNPC : MonoBehaviour
     {
         public string NextKey;
 
@@ -34,7 +34,7 @@ namespace FrogCore
         {
             Logger.Log($"[{GetType().FullName.Replace(".", "]:[")}] - {o}");
         }
-        public void Start()
+        public void SetUp()
         {
             BoxObject = gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
             gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").RemoveAction(6);
@@ -45,20 +45,15 @@ namespace FrogCore
             gameObject.GetComponent<AudioSource>().loop = false;
             state.Actions = new FsmStateAction[]
             {
-                new Vasi.InvokeMethod(SelectDialogue)
+                new CustomCallMethod(SelectDialogue)
             };
             FsmState state2 = gameObject.LocateMyFSM("Conversation Control").CreateState("More");
             state2.Actions = new FsmStateAction[]
             {
-                new Vasi.InvokeCoroutine(ContinueConvo, false)
+                new CustomCallCoroutine(ContinueConvo)
             };
-            Log("Editing fsm8");
-            state.ChangeTransition("CONVO_FINISH", "More");
-            state2.Transitions = state2.Transitions.Append(new FsmTransition
-            {
-                FsmEvent = FsmEvent.FindEvent("CONVO_FINISH"),
-                ToState = "More"
-            }).ToArray<FsmTransition>();
+            state.ChangeTransition("CONVO_FINISH", state2);
+            state2.AddTransition("CONVO_FINISH", state2);
         }
         private IEnumerator ContinueConvo()
         {

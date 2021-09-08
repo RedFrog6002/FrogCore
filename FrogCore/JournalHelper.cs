@@ -3,42 +3,213 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
-using Vasi;
 using Modding;
-using ModCommon;
 using System.Collections;
 using HutongGames.PlayMaker.Actions;
+using HutongGames.PlayMaker;
+using FrogCore.Ext;
+using FrogCore.Fsm;
+using System.Reflection;
 
 namespace FrogCore
 {
+    /// <summary>
+    /// UNFINISHED! DO NOT USE!
+    /// Allows for easily changing the layout of journal entries
+    /// </summary>
+    public static class JournalGroup
+    {
+        public static readonly List<(List<string>, EntryFormat)> Groups = new List<(List<string>, EntryFormat)>() { (DefaultEntries, EntryFormat.List) };
+        public static readonly List<string> DefaultEntries = new List<string>();
+        static JournalGroup()
+        {
+            foreach (FieldInfo fi in typeof(PlayerData).GetFields().Where(fi => fi.Name.StartsWith("Kills")))
+                DefaultEntries.Add(fi.Name.Substring(5));
+        }
+        /// <summary>
+        /// set aside some entries to a certain format
+        /// </summary>
+        /// <param name="entryPDNames"></param>
+        /// <param name="groupFormat"></param>
+        public static void CreateJournalGroup(IEnumerable<string> entryPDNames, EntryFormat groupFormat = EntryFormat.List)
+        {
+            foreach ((List<string> list, EntryFormat _) in Groups.Where(e => e.Item1 != null && e.Item1.Any(s => entryPDNames.Contains(s))))
+                foreach (string s in entryPDNames)
+                    if (list.Contains(s))
+                        list.Remove(s);
+            Groups.Add((entryPDNames.ToList(), groupFormat));
+            ClearUnused();
+        }
+        private static void ClearUnused()
+        {
+            for (int i = Groups.Count; i > 0; i++)
+            {
+                (List<string> list, EntryFormat format) = Groups[i - 1];
+                if ((list == null || list.Count == 0) && list != DefaultEntries)
+                    Groups.RemoveAt(i - 1);
+            }
+        }
+    }
+    /// <summary>
+    /// Used to change the format of journal entries
+    /// </summary>
+    public enum EntryFormat
+    {
+        /// <summary>
+        /// Use the original List format of the game
+        /// </summary>
+        List,
+        /// <summary>
+        /// Use a format similar to the inventory or charms list
+        /// </summary>
+        Inventory,
+        /// <summary>
+        /// Use a clone of the original list specifically for this group
+        /// </summary>
+        OwnList,
+        /// <summary>
+        /// Use a clone of a format similar to the inventory specifically for this group
+        /// </summary>
+        OwnInventory
+    }
     /// <summary>
     /// Allows for easily adding journal entries. Just use the static method or create a new JournalHelper to add one
     /// </summary>
     public class JournalHelper
     {
-        #region addentries
-        public static JournalHelper AddJournalEntry(Sprite portrait, Sprite picture, JournalPlayerData jpd, JournalNameStrings names, EntryType entryType = EntryType.Normal, Sprite customentrysprite = null, bool addtracker = true, bool addhooks = true)
+        #region Extentions
+        public void RecordJournalEntry()
         {
-            return new JournalHelper(portrait, picture, jpd, names, entryType, customentrysprite, addtracker, addhooks);
+            string playerDataName = "CustomJournal" + entrynumber;
+            PlayerData playerData = GameManager.instance.playerData;
+            string killedName = "killed" + playerDataName;
+            string killsName = "kills" + playerDataName;
+            string newName = "newData" + playerDataName;
+            bool firstKill = false;
+            if (!playerData.GetBool(killedName))
+            {
+                firstKill = true;
+                playerData.SetBool(killedName, true);
+                playerData.SetBool(newName, true);
+            }
+            bool lastKill = false;
+            int killsLeft = playerData.GetInt(killsName);
+            if (killsLeft > 0)
+            {
+                killsLeft--;
+                playerData.SetInt(killsName, killsLeft);
+                if (killsLeft <= 0)
+                    lastKill = true;
+            }
+            if (playerData.GetBool("hasJournal"))
+            {
+                if (lastKill)
+                    playerData.SetInt("journalEntriesCompleted", playerData.GetInt("journalEntriesCompleted") + 1);
+                else if (firstKill)
+                    playerData.SetInt("journalNotesCompleted", playerData.GetInt("journalNotesCompleted") + 1);
+                if (lastKill || firstKill)
+                {
+                    GameObject journalUpdateMessageSpawned = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned");
+                    if (!journalUpdateMessageSpawned && !notificationPrefab)
+                    {
+                        foreach (EnemyDeathEffects ede in Resources.FindObjectsOfTypeAll<EnemyDeathEffects>())
+                        {
+                            GameObject journalUpdateMessagePrefab = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>(ede, "journalUpdateMessagePrefab");
+                            if (journalUpdateMessagePrefab)
+                            {
+                                notificationPrefab = GameObject.Instantiate(journalUpdateMessagePrefab);
+                                notificationPrefab.name = journalUpdateMessagePrefab.name;
+                                notificationPrefab.SetActive(false);
+                                GameObject.DontDestroyOnLoad(notificationPrefab);
+                                journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(journalUpdateMessagePrefab);
+                                journalUpdateMessageSpawned.SetActive(false);
+                                ReflectionHelper.SetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned", journalUpdateMessageSpawned);
+                                break;
+                            }
+                        }
+                    }
+                    else if (!journalUpdateMessageSpawned && notificationPrefab)
+                    {
+                        journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(notificationPrefab);
+                        journalUpdateMessageSpawned.SetActive(false);
+                    }
+                    if (journalUpdateMessageSpawned)
+                    {
+                        if (journalUpdateMessageSpawned.activeSelf)
+                            journalUpdateMessageSpawned.SetActive(false);
+                        journalUpdateMessageSpawned.SetActive(true);
+                        PlayMakerFSM playMakerFSM = journalUpdateMessageSpawned.LocateMyFSM("Journal Msg");
+                        playMakerFSM.FsmVariables.FindFsmBool("Full").Value = lastKill;
+                        playMakerFSM.FsmVariables.FindFsmBool("Should Recycle").Value = true;
+                    }
+                }
+            }
         }
-        public JournalHelper(Sprite portrait, Sprite picture, JournalPlayerData jpd, JournalNameStrings names, EntryType entryType = EntryType.Normal, Sprite customentrysprite = null, bool addtracker = true, bool addhooks = true)
+        public void UnHook()
         {
+            On.JournalList.BuildEnemyList -= JournalList_BuildEnemyList;
+            //ExtraHooks.OnFsmAwake["Item List Control"] -= ItemListControlFSMAwake;
+            OldHooks.LanguageGetHook -= Instance_LanguageGetHook;
+            OldHooks.GetPlayerIntHook -= Instance_GetPlayerIntHook;
+            OldHooks.SetPlayerIntHook -= Instance_SetPlayerIntHook;
+            OldHooks.GetPlayerBoolHook -= Instance_GetPlayerBoolHook;
+            OldHooks.SetPlayerBoolHook -= Instance_SetPlayerBoolHook;
+            On.PlayerData.CountJournalEntries -= PlayerData_CountJournalEntries;
+        }
+        public void Hook()
+        {
+            On.JournalList.BuildEnemyList += JournalList_BuildEnemyList;
+            //ExtraHooks.OnFsmAwake["Item List Control"] += ItemListControlFSMAwake;
+            OldHooks.LanguageGetHook += Instance_LanguageGetHook;
+            OldHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
+            OldHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
+            OldHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
+            OldHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
+            On.PlayerData.CountJournalEntries += PlayerData_CountJournalEntries;
+        }
+        private void ItemListControlFSMAwake(PlayMakerFSM fsm)
+        {
+            Ext.Extensions.Log("item list control fsm awake");
+        }
+        public override string ToString() => GetEntryName();
+        public string GetEntryName() => "CustomJournal" + entrynumber;
+        #endregion
+        #region Add Entries
+        static JournalHelper()
+        {
+            On.JournalList.BuildEnemyList += JournalList_BuildEnemyList_Static;
+        }
+        public static JournalHelper AddJournalEntry(Sprite portrait, Sprite picture, JournalPlayerData jpd, JournalNameStrings names, string insertafter = null, EntryType entryType = EntryType.Normal, Sprite customentrysprite = null, bool addtracker = true, bool addhooks = true)
+        {
+            return new JournalHelper(portrait, picture, jpd, names, insertafter, entryType, customentrysprite, addtracker, addhooks);
+        }
+        //int panelindex;
+        public JournalHelper(Sprite portrait, Sprite picture, JournalPlayerData jpd, JournalNameStrings names, string insertafter = null, EntryType entryType = EntryType.Normal, Sprite customentrysprite = null, bool addtracker = true, bool extrahooks = true)
+        {
+            bool hook = true;
             portraitsprite = portrait;
             picturesprite = picture;
             addingtracker = addtracker;
             CustomEntries++;
+            entrynumber = CustomEntries;
+            InsertAfter = insertafter;
             EType = entryType;
-            On.JournalList.BuildEnemyList += JournalList_BuildEnemyList;
-            if (addhooks)
+            //InventoryHelper.AddInventoryPanel(out panelindex);
+            if (hook)
             {
-                playerData = jpd;
-                nameStrings = names;
-                ModHooks.Instance.LanguageGetHook += Instance_LanguageGetHook;
-                ModHooks.Instance.GetPlayerIntHook += Instance_GetPlayerIntHook;
-                ModHooks.Instance.SetPlayerIntHook += Instance_SetPlayerIntHook;
-                ModHooks.Instance.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
-                ModHooks.Instance.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
-                On.PlayerData.CountJournalEntries += PlayerData_CountJournalEntries;
+                On.JournalList.BuildEnemyList += JournalList_BuildEnemyList;
+                //ExtraHooks.OnFsmAwake["Item List Control"] += ItemListControlFSMAwake;
+                if (extrahooks)
+                {
+                    playerData = jpd;
+                    nameStrings = names;
+                    OldHooks.LanguageGetHook += Instance_LanguageGetHook;
+                    OldHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
+                    OldHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
+                    OldHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
+                    OldHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
+                    On.PlayerData.CountJournalEntries += PlayerData_CountJournalEntries;
+                }
             }
             if (entryType == EntryType.Custom && customentrysprite != null)
             {
@@ -54,12 +225,14 @@ namespace FrogCore
         public Sprite portraitsprite;
         public Sprite picturesprite;
         public Sprite CustomSprite;
+        public string InsertAfter;
         public JournalList ListInstance { get; private set; }
         public int entrynumber { get; private set; } = 0;
         public static int CustomEntries { get; private set; } = 0;
         public static List<JournalTracker> trackers { get; private set; } = new List<JournalTracker>();
+        private static GameObject notificationPrefab;
         #endregion
-        #region hooks
+        #region Hooks
         #region other hooks
         private void PlayerData_CountJournalEntries(On.PlayerData.orig_CountJournalEntries orig, PlayerData self)
         {
@@ -77,13 +250,32 @@ namespace FrogCore
                 self.SetInt("journalNotesCompleted", self.GetInt("journalNotesCompleted") + 1);
             }
         }
+        private static void JournalList_BuildEnemyList_Static(On.JournalList.orig_BuildEnemyList orig, JournalList self)
+        {
+            orig(self);
+            try
+            {
+                var current = ReflectionHelper.GetField<JournalList, GameObject[]>(self, "currentList");
+                if (current == null)
+                {
+                    self.UpdateEnemyList();
+                    current = ReflectionHelper.GetField<JournalList, GameObject[]>(self, "currentList");
+                }
+                PlayerData.instance.lastJournalItem = Mathf.Clamp(PlayerData.instance.lastJournalItem, 0, current.Length - 1);
+            }
+            catch (Exception e)
+            {
+                Ext.Extensions.Log("Journal Helper", e);
+            }
+            PlayerData.instance.CountJournalEntries();
+        }
         private void JournalList_BuildEnemyList(On.JournalList.orig_BuildEnemyList orig, JournalList self)
         {
             #region modifyFSM
             ListInstance = self;
             var fsm = self.gameObject.LocateMyFSM("Item List Control");
             var skip = false;
-            foreach(var state in fsm.FsmStates)
+            foreach (var state in fsm.FsmStates)
             {
                 if (state.Name == "Custom Check" || state.Name == "Custom")
                 {
@@ -96,7 +288,7 @@ namespace FrogCore
                 var state = fsm.CreateState("Custom Check");
                 void Check()
                 {
-                    var list = ReflectionHelper.GetAttr<JournalList, GameObject[]>(self, "currentList");
+                    var list = ReflectionHelper.GetField<JournalList, GameObject[]>(self, "currentList");
                     var currentitem = list[fsm.FsmVariables.GetFsmInt("Current Item").Value];
                     if (currentitem.GetComponent<JournalEntryStats>().grimmEntry && currentitem.GetComponent<JournalEntryStats>().warriorGhost)
                     {
@@ -114,30 +306,27 @@ namespace FrogCore
                     }
                     fsm.SetState("Type");
                 }
-                state.AddMethod(Check);
+                state.AddAction(new CustomCallMethod(Check));
                 fsm.ChangeTransition("Display Kills", "FINISHED", "Custom Check");
                 fsm.ChangeTransition("Get Notes", "FINISHED", "Custom Check");
             }
             #endregion
-            var alreadyadded = false;
-            foreach (var v in self.list)
+            GameObject tmpGo = null;
+            try
             {
-                if (entrynumber != 0)
-                {
-                    if (v.GetComponent<JournalEntryStats>().convoName == "CustomJournal" + entrynumber)
-                        alreadyadded = true;
-                }
+                tmpGo = self.list.First(x => x.GetComponent<JournalEntryStats>().convoName == GetEntryName());
             }
-            if (!alreadyadded)
+            catch { }
+            if (tmpGo == null)
             {
-                entrynumber = self.list.Length + 1;
+                //entrynumber = self.list.Length + 1;
                 var go = GameObject.Instantiate(self.list[0]);
                 var listitem = go.GetComponent<JournalEntryStats>();
-                listitem.convoName = "CustomJournal" + entrynumber;
+                listitem.convoName = GetEntryName();
                 listitem.sprite = picturesprite;
                 go.transform.Find("Portrait").GetComponent<SpriteRenderer>().sprite = portraitsprite;
-                go.transform.Find("Name").GetComponent<SetTextMeshProGameText>().convName = "CustomJournal" + entrynumber;
-                listitem.playerDataName = "CustomJournal" + entrynumber;
+                go.transform.Find("Name").GetComponent<SetTextMeshProGameText>().convName = GetEntryName();
+                listitem.playerDataName = GetEntryName();
                 switch (EType)
                 {
                     case EntryType.Normal:
@@ -165,66 +354,100 @@ namespace FrogCore
                     if (CustomSprite != null && EType == EntryType.Custom)
                         go.GetComponent<JournalTracker>().CustomEntrySprite = CustomSprite;
                 }
-                self.list = self.list.Append(go).ToArray();
+                if (string.IsNullOrEmpty(InsertAfter))
+                {
+                    Ext.Extensions.Log("Journal Helper", "NO Insert After present(not a error), defaulting to the end of the list on custom entry " + entrynumber);
+                    self.list = self.list.Append(go).ToArray();
+                }
+                else
+                {
+                    bool containsbool = false;
+                    tmpGo = null;
+                    try
+                    {
+                        tmpGo = self.list.First(x => x.GetComponent<JournalEntryStats>().playerDataName == InsertAfter);
+                        containsbool = tmpGo != null;
+                    }
+                    catch { }
+                    int index = containsbool ? Array.IndexOf(self.list, tmpGo) : 0;
+                    if (containsbool)
+                    {
+                        Ext.Extensions.Log("Journal Helper", "Insert After found, adding custom entry " + entrynumber);
+                        //var tmpList = self.list.Insert(index + 1, go).ToList();
+                        //if ((tmpList[tmpList.Count - 1] = go) && (tmpList.IndexOf(go) != tmpList.Count - 1))
+                        //tmpList.RemoveAt(tmpList.Count - 1); //for when vasi was broken
+                        //self.list = tmpList.ToArray();
+                        self.list = self.list.Insert(index + 1, go).ToArray();
+                    }
+                    else
+                    {
+                        Ext.Extensions.Log("Journal Helper", "Insert After present, but NOT found, defaulting to the end of the list on custom entry " + entrynumber);
+                        self.list = self.list.Append(go).ToArray();
+                    }
+                }
             }
             orig(self);
-            PlayerData.instance.CountJournalEntries();
         }
         private string Instance_LanguageGetHook(string key, string sheetTitle)
         {
-            if (key == "NAME_" + "CustomJournal" + entrynumber)
+            if (key == "NAME_" + GetEntryName())
             {
                 return nameStrings.name;
             }
-            if (key == "DESC_" + "CustomJournal" + entrynumber)
+            if (key == "DESC_" + GetEntryName())
             {
                 return nameStrings.desc;
             }
-            if (key == "NOTE_" + "CustomJournal" + entrynumber)
+            if (key == "NOTE_" + GetEntryName())
             {
                 return nameStrings.note;
             }
-            if (key == "CustomJournal" + entrynumber)
+            if (key == GetEntryName())
             {
                 return nameStrings.shortname;
             }
+            //if (key == "PANE_" + panelindex)
+                //return nameStrings.name;
             return Language.Language.GetInternal(key, sheetTitle);
         }
         #endregion
         #region bool hooks
         private void Instance_SetPlayerBoolHook(string originalSet, bool value)
         {
-            if (originalSet == "killed" + "CustomJournal" + entrynumber)
+            if (originalSet == "killed" + GetEntryName())
                 playerData.haskilled = value;
-            if (originalSet == "newData" + "CustomJournal" + entrynumber)
+            if (originalSet == "newData" + GetEntryName())
                 playerData.newentry = value;
             PlayerData.instance.SetBoolInternal(originalSet, value);
         }
         private bool Instance_GetPlayerBoolHook(string originalSet)
         {
-            if (originalSet == "killed" + "CustomJournal" + entrynumber)
+            if (originalSet == "killed" + GetEntryName())
                 return playerData.haskilled;
-            if (originalSet == "newData" + "CustomJournal" + entrynumber)
+            if (originalSet == "newData" + GetEntryName())
                 return playerData.newentry;
+            //if (originalSet == "hasPane" + panelindex)
+                //return true;
             return PlayerData.instance.GetBoolInternal(originalSet);
         }
         #endregion
         #region int hooks
         private void Instance_SetPlayerIntHook(string intName, int value)
         {
-            if (intName == "kills" + "CustomJournal" + entrynumber)
+            if (intName == "kills" + GetEntryName())
                 playerData.killsremaining = value;
             PlayerData.instance.SetIntInternal(intName, value);
         }
         private int Instance_GetPlayerIntHook(string intName)
         {
-            if (intName == "kills" + "CustomJournal" + entrynumber)
+            if (intName == "kills" + GetEntryName())
                 return playerData.killsremaining;
             return PlayerData.instance.GetIntInternal(intName);
         }
         #endregion
         #endregion
-        #region CustomData
+        #region Custom Data
+        [Serializable]
         public class JournalPlayerData
         {
             public int killsremaining = 0;
