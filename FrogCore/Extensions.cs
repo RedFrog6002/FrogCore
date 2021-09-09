@@ -34,11 +34,11 @@ namespace FrogCore.Ext
         }
         public static void DestroyObject(this UObject o)
         {
-            UObject.DestroyObject(o);
+            UObject.Destroy(o);
         }
         public static void DestroyObject(this UObject o, float time)
         {
-            UObject.DestroyObject(o, time);
+            UObject.Destroy(o, time);
         }
         #endregion
 

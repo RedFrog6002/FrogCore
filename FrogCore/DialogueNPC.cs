@@ -114,12 +114,12 @@ namespace FrogCore
         }
         public Dictionary<string, AudioClip> SingleClips = new Dictionary<string, AudioClip>() {
 
-            { "PLACEHOLDER_1", new AudioClip() },
+            { "PLACEHOLDER_1", AudioClip.Create("PLACEHOLDER_1", 0, 0, 0, false) },
         };
         public Dictionary<string, AudioClip[]> MultiClips = new Dictionary<string, AudioClip[]>() {
 
             { "MULTIHOLDER_1", new AudioClip[]
-            { new AudioClip()} },
+            { AudioClip.Create("MULTIHOLDER_1", 0, 0, 0, false)} },
         };
         public string[] Dialogue = new string[]
         {
