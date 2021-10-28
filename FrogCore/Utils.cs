@@ -189,7 +189,7 @@ namespace FrogCore
 		public static tk2dSpriteCollectionData CloneTk2dCollection(tk2dSpriteCollectionData collection, string name = "")
 		{
 			if (string.IsNullOrEmpty(name))
-				name = collection.name;
+				name = collection.spriteCollectionName;
 			tk2dSpriteCollectionData newCollection = UObject.Instantiate(collection);
 			for (int i = 0; i < newCollection.materials.Length; i++)
 			{
@@ -217,11 +217,68 @@ namespace FrogCore
 				foreach (tk2dSpriteAnimationFrame frame in clip.frames)
 					frame.spriteCollection = collection;
 		}
+		public static void SetCollection(this tk2dSpriteAnimation animation, Dictionary<tk2dSpriteCollectionData, tk2dSpriteCollectionData> collections)
+		{
+			foreach (tk2dSpriteAnimationClip clip in animation.clips)
+				foreach (tk2dSpriteAnimationFrame frame in clip.frames)
+					if (collections.TryGetValue(frame.spriteCollection, out tk2dSpriteCollectionData collection))
+						frame.spriteCollection = collection;
+		}
+		public static void SetCollection(this tk2dSpriteAnimationClip clip, tk2dSpriteCollectionData collection)
+		{
+			foreach (tk2dSpriteAnimationFrame frame in clip.frames)
+				frame.spriteCollection = collection;
+		}
+		public static void SetCollection(this tk2dSpriteAnimationClip clip, Dictionary<tk2dSpriteCollectionData, tk2dSpriteCollectionData> collections)
+		{
+			foreach (tk2dSpriteAnimationFrame frame in clip.frames)
+				if (collections.TryGetValue(frame.spriteCollection, out tk2dSpriteCollectionData collection))
+					frame.spriteCollection = collection;
+		}
+		public static void SetCollection(this tk2dSpriteAnimationFrame frame, tk2dSpriteCollectionData collection)
+		{
+			frame.spriteCollection = collection;
+		}
+		public static void SetCollection(this tk2dSpriteAnimationFrame frame, Dictionary<tk2dSpriteCollectionData, tk2dSpriteCollectionData> collections)
+		{
+			if (collections.TryGetValue(frame.spriteCollection, out tk2dSpriteCollectionData collection))
+				frame.spriteCollection = collection;
+		}
 		public static void SetTexture(this tk2dSpriteCollectionData collection, Texture2D tex)
 		{
 			collection.FirstValidDefinition.material.mainTexture = tex;
 		}
-		public static void CloneFramesAndFps(this tk2dSpriteAnimation animation, tk2dSpriteAnimation other, Dictionary<string, string> move)
+	    	public static tk2dSpriteCollectionData CloneTk2dCollectionWithTexture(this tk2dSpriteCollectionData collection, Texture2D tex, string name = "")
+		{
+			tk2dSpriteCollectionData newcollection = CloneTk2dCollection(collection, name);
+			SetTexture(newcollection, tex);
+		}
+	    	public static tk2dSpriteAnimation CloneTk2dAnimationWithCollection(this tk2dSpriteAnimation animation, tk2dSpriteCollectionData collection, string name = "")
+		{
+			tk2dSpriteAnimation newanimation = CloneTk2dAnimation(animation, name);
+			SetCollection(newanimation, newcollection);
+			return newanimation;
+		}
+	    	public static (tk2dSpriteAnimation, tk2dSpriteCollectionData) CloneTk2dAnimationWithCollection(this tk2dSpriteAnimation animation, string name = "")
+		{
+			tk2dSpriteAnimation newanimation = CloneTk2dAnimation(animation, name);
+			tk2dSpriteCollectionData collection = newanimation.clips[0].frames[0].spriteCollection;
+			tk2dSpriteCollectionData newcollection = CloneTk2dCollection(collection, name);
+			SetCollection(newanimation, newcollection);
+			return (newanimation, newcollection);
+		}
+	    	public static (tk2dSpriteAnimation, tk2dSpriteCollectionData) CloneTk2dAnimationWithCollectionSetTexture(this tk2dSpriteAnimation animation, Texture2D tex, string name = "")
+		{
+			tk2dSpriteAnimation newanimation = CloneTk2dAnimation(animation, name);
+			tk2dSpriteCollectionData collection = newanimation.clips[0].frames[0].spriteCollection;
+			tk2dSpriteCollectionData newcollection = CloneTk2dCollection(collection, name);
+			SetCollection(newanimation, newcollection);
+			SetTexture(newcollection, tex);
+			return (newanimation, newcollection);
+		}
+	    	[Obsolete("Will be removed in later versions, use ApplyFramesAndFps")]
+	    	public static void CloneFramesAndFps(this tk2dSpriteAnimation animation, tk2dSpriteAnimation other, Dictionary<string, string> move) => ApplyFramesAndFps(animation, other, move);
+		public static void ApplyFramesAndFps(this tk2dSpriteAnimation animation, tk2dSpriteAnimation other, Dictionary<string, string> move)
 		{
 			foreach (KeyValuePair<string, string> pair in move)
 			{
@@ -230,6 +287,128 @@ namespace FrogCore
 				sourceclip.frames = newclip.frames;
 				sourceclip.fps = newclip.fps;
 			}
+		}
+		public static void ApplyFramesAndFps(this tk2dSpriteAnimation animation, tk2dSpriteAnimation other, Dictionary<string, string> move, bool clone)
+		{
+			if (!clone)
+			{
+				ApplyFramesAndFps(animation, other, move);
+				return;
+			}	
+			foreach (KeyValuePair<string, string> pair in move)
+			{
+				tk2dSpriteAnimationClip sourceclip = animation.GetClipByName(pair.Key);
+				tk2dSpriteAnimationClip newclip = other.GetClipByName(pair.Value);
+				sourceclip.frames = newclip.CloneFrames().ToArray();
+				sourceclip.fps = newclip.fps;
+			}
+		}
+		public static void ApplyFramesAndFps(this tk2dSpriteAnimation animation, tk2dSpriteAnimation other, Dictionary<string, string> move, int definitionOffset)
+		{
+			foreach (KeyValuePair<string, string> pair in move)
+			{
+				tk2dSpriteAnimationClip sourceclip = animation.GetClipByName(pair.Key);
+				tk2dSpriteAnimationClip newclip = other.GetClipByName(pair.Value);
+				sourceclip.frames = newclip.CloneFrames(definitionOffset).ToArray();
+				sourceclip.fps = newclip.fps;
+			}
+		}
+		public static List<tk2dSpriteAnimationClip> GetClips(this tk2dSpriteAnimation animation, string[] clips, bool clone = false)
+		{
+			List<tk2dSpriteAnimationClip> ret = new List<tk2dSpriteAnimationClip>();
+			foreach (string name in clips)
+			{
+				ret.Add(animation.GetClipByName(pair.Key));
+			}
+			return ret;
+		}
+		public static Dictionary<string, tk2dSpriteAnimationClip> GetClipsDict(this tk2dSpriteAnimation animation, string[] clips, bool clone = false)
+		{
+			Dictionary<string, tk2dSpriteAnimationClip> ret = new Dictionary<string, tk2dSpriteAnimationClip>();
+			foreach (string name in clips)
+			{
+				ret.Add(name, animation.GetClipByName(pair.Key));
+			}
+			return ret;
+		}
+		public static void SetFramesAndFps(this tk2dSpriteAnimation animation, List<tk2dSpriteAnimationClip> clips, Action<tk2dSpriteAnimationClip>? onSetClip = null)
+		{
+			foreach (tk2dSpriteAnimationClip newclip = in clips)
+			{
+				tk2dSpriteAnimationClip sourceclip = animation.GetClipByName(pair.Key);
+				sourceclip.frames = newclip.frames;
+				sourceclip.fps = newclip.fps;
+				if (onSetClip.hasValue)
+					onSetClip.Value(sourceclip);
+			}
+		}
+		public static void SetFramesAndFps(this tk2dSpriteAnimation animation, Dictionary<string, tk2dSpriteAnimationClip> clips, Action<tk2dSpriteAnimationClip>? setClip = null)
+		{
+			foreach (KeyValuePair<string, tk2dSpriteAnimationClip> pair = in clips)
+			{
+				tk2dSpriteAnimationClip sourceclip = animation.GetClipByName(pair.Key);
+				tk2dSpriteAnimationClip newclip = pair.Value;
+				sourceclip.frames = newclip.frames;
+				sourceclip.fps = newclip.fps;
+				if (setClip.hasValue)
+					setClip.Value(sourceclip);
+			}
+		}
+		public static int AddTk2dSpriteDefinitions(this tk2dSpriteCollectionData collection, tk2dSpriteCollectionData addcollection, int startIndex = 0, int? endIndex = null)
+		{
+			int offset = collection.spriteDefinitions.Length - startIndex;
+			List<tk2dSpriteDefinition> definitions = collection.spriteDefinitions.ToList();
+			if (!endIndex.hasValue)
+			{
+				endIndex = addcollection.spriteDefinitions.Length;
+			}
+			for (int i = startIndex; i < endIndex; i++)
+			{
+				definitions.Add(addcollection.spriteDefinitions[i]);
+			}
+			collection.spriteDefinitions = definitions.ToArray();
+			return offset;
+		}
+		public static List<tk2dSpriteAnimationClip> CloneClips(this tk2dSpriteAnimation animation)
+		{
+			List<tk2dSpriteAnimationClip> ret = new List<tk2dSpriteAnimationClip>();
+			foreach (tk2dSpriteAnimationClip clip in animation.clips)
+			{
+				ret.Add(new tk2dSpriteAnimationClip(clip));
+			}
+			return ret;
+		}
+		public static List<tk2dSpriteAnimationClip> CloneClips(this tk2dSpriteAnimation animation, string[] clips)
+		{
+			List<tk2dSpriteAnimationClip> ret = new List<tk2dSpriteAnimationClip>();
+			foreach (string clip in clips)
+			{
+				ret.Add(new tk2dSpriteAnimationClip(animation.GetClipByName(clip)));
+			}
+			return ret;
+		}
+		public static List<tk2dSpriteAnimationFrame> CloneFrames(this tk2dSpriteAnimationClip clip)
+		{
+			List<tk2dSpriteAnimationFrame> ret = new List<tk2dSpriteAnimationFrame>();
+			foreach (tk2dSpriteAnimationFrame frame in clip.frames)
+			{
+				tk2dSpriteAnimationFrame newframe = new tk2dSpriteAnimationClip();
+				newframe.CopyFrom(frame);
+				ret.Add(newframe);
+			}
+			return ret;
+		}
+		public static List<tk2dSpriteAnimationFrame> CloneFrames(this tk2dSpriteAnimationClip clip, int offset)
+		{
+			List<tk2dSpriteAnimationFrame> ret = new List<tk2dSpriteAnimationFrame>();
+			foreach (tk2dSpriteAnimationFrame frame in clip.frames)
+			{
+				tk2dSpriteAnimationFrame newframe = new tk2dSpriteAnimationClip();
+				newframe.CopyFrom(frame);
+				newframe.spriteId += offset;
+				ret.Add(newframe);
+			}
+			return ret;
 		}
 		#endregion
 
