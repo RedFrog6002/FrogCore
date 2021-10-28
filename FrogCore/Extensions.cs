@@ -32,14 +32,6 @@ namespace FrogCore.Ext
         {
             UObject.DestroyImmediate(o);
         }
-        public static void DestroyObject(this UObject o)
-        {
-            UObject.Destroy(o);
-        }
-        public static void DestroyObject(this UObject o, float time)
-        {
-            UObject.Destroy(o, time);
-        }
         #endregion
 
         #region tk2d sprite
