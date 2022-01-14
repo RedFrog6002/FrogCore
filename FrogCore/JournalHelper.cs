@@ -149,22 +149,22 @@ namespace FrogCore
         {
             On.JournalList.BuildEnemyList -= JournalList_BuildEnemyList;
             //ExtraHooks.OnFsmAwake["Item List Control"] -= ItemListControlFSMAwake;
-            OldHooks.LanguageGetHook -= Instance_LanguageGetHook;
-            OldHooks.GetPlayerIntHook -= Instance_GetPlayerIntHook;
-            OldHooks.SetPlayerIntHook -= Instance_SetPlayerIntHook;
-            OldHooks.GetPlayerBoolHook -= Instance_GetPlayerBoolHook;
-            OldHooks.SetPlayerBoolHook -= Instance_SetPlayerBoolHook;
+            ModHooks.LanguageGetHook -= Instance_LanguageGetHook;
+            ModHooks.GetPlayerIntHook -= Instance_GetPlayerIntHook;
+            ModHooks.SetPlayerIntHook -= Instance_SetPlayerIntHook;
+            ModHooks.GetPlayerBoolHook -= Instance_GetPlayerBoolHook;
+            ModHooks.SetPlayerBoolHook -= Instance_SetPlayerBoolHook;
             On.PlayerData.CountJournalEntries -= PlayerData_CountJournalEntries;
         }
         public void Hook()
         {
             On.JournalList.BuildEnemyList += JournalList_BuildEnemyList;
             //ExtraHooks.OnFsmAwake["Item List Control"] += ItemListControlFSMAwake;
-            OldHooks.LanguageGetHook += Instance_LanguageGetHook;
-            OldHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
-            OldHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
-            OldHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
-            OldHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
+            ModHooks.LanguageGetHook += Instance_LanguageGetHook;
+            ModHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
+            ModHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
+            ModHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
+            ModHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
             On.PlayerData.CountJournalEntries += PlayerData_CountJournalEntries;
         }
         private void ItemListControlFSMAwake(PlayMakerFSM fsm)
@@ -203,11 +203,11 @@ namespace FrogCore
                 {
                     playerData = jpd;
                     nameStrings = names;
-                    OldHooks.LanguageGetHook += Instance_LanguageGetHook;
-                    OldHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
-                    OldHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
-                    OldHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
-                    OldHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
+                    ModHooks.LanguageGetHook += Instance_LanguageGetHook;
+                    ModHooks.GetPlayerIntHook += Instance_GetPlayerIntHook;
+                    ModHooks.SetPlayerIntHook += Instance_SetPlayerIntHook;
+                    ModHooks.GetPlayerBoolHook += Instance_GetPlayerBoolHook;
+                    ModHooks.SetPlayerBoolHook += Instance_SetPlayerBoolHook;
                     On.PlayerData.CountJournalEntries += PlayerData_CountJournalEntries;
                 }
             }
@@ -388,7 +388,7 @@ namespace FrogCore
             }
             orig(self);
         }
-        private string Instance_LanguageGetHook(string key, string sheetTitle)
+        private string Instance_LanguageGetHook(string key, string sheetTitle, string orig)
         {
             if (key == "NAME_" + GetEntryName())
             {
@@ -408,19 +408,19 @@ namespace FrogCore
             }
             //if (key == "PANE_" + panelindex)
                 //return nameStrings.name;
-            return Language.Language.GetInternal(key, sheetTitle);
+            return orig;
         }
         #endregion
         #region bool hooks
-        private void Instance_SetPlayerBoolHook(string originalSet, bool value)
+        private bool Instance_SetPlayerBoolHook(string originalSet, bool orig)
         {
             if (originalSet == "killed" + GetEntryName())
-                playerData.haskilled = value;
+                playerData.haskilled = orig;
             if (originalSet == "newData" + GetEntryName())
-                playerData.newentry = value;
-            PlayerData.instance.SetBoolInternal(originalSet, value);
+                playerData.newentry = orig;
+            return orig;
         }
-        private bool Instance_GetPlayerBoolHook(string originalSet)
+        private bool Instance_GetPlayerBoolHook(string originalSet, bool orig)
         {
             if (originalSet == "killed" + GetEntryName())
                 return playerData.haskilled;
@@ -428,21 +428,21 @@ namespace FrogCore
                 return playerData.newentry;
             //if (originalSet == "hasPane" + panelindex)
                 //return true;
-            return PlayerData.instance.GetBoolInternal(originalSet);
+            return orig;
         }
         #endregion
         #region int hooks
-        private void Instance_SetPlayerIntHook(string intName, int value)
+        private int Instance_SetPlayerIntHook(string intName, int orig)
         {
             if (intName == "kills" + GetEntryName())
-                playerData.killsremaining = value;
-            PlayerData.instance.SetIntInternal(intName, value);
+                playerData.killsremaining = orig;
+            return orig;
         }
-        private int Instance_GetPlayerIntHook(string intName)
+        private int Instance_GetPlayerIntHook(string intName, int orig)
         {
             if (intName == "kills" + GetEntryName())
                 return playerData.killsremaining;
-            return PlayerData.instance.GetIntInternal(intName);
+            return orig;
         }
         #endregion
         #endregion
