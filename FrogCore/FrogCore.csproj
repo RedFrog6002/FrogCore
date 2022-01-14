@@ -38,7 +38,6 @@
     <Compile Include="InventoryHelper.cs" />
     <Compile Include="InventoryPanel.cs" />
     <Compile Include="MethodBehaviour.cs" />
-    <Compile Include="OldHooks.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="FsmUtil.cs" />
     <Compile Include="JournalHelper.cs" />
