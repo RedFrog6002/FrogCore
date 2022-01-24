@@ -30,10 +30,35 @@ namespace FrogCore
 
         public string NPC_DREAM_KEY = "MyNpc_Dreamnail";
 
+
+        public Dictionary<string, AudioClip> SingleClips = new Dictionary<string, AudioClip>()
+        {
+            {"PLACEHOLDER_1", null}
+        };
+
+        public Dictionary<string, AudioClip[]> MultiClips = new Dictionary<string, AudioClip[]>()
+        {
+            {
+                "MULTIHOLDER_1", new AudioClip[]
+                    {null}
+            },
+        };
+
+        public string[] Dialogue = new string[]
+        {
+            "HOLDER_1",
+            "PLACEHOLDER_1",
+            "MULTIHOLDER_1",
+            "HOLDER_2"
+        };
+
+        public Func<string> DialogueSelector;
+
         public void Log(object o)
         {
             Logger.Log($"[{GetType().FullName.Replace(".", "]:[")}] - {o}");
         }
+
         public void SetUp()
         {
             BoxObject = gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
@@ -55,6 +80,7 @@ namespace FrogCore
             state.ChangeTransition("CONVO_FINISH", state2);
             state2.AddTransition("CONVO_FINISH", state2);
         }
+
         private IEnumerator ContinueConvo()
         {
             yield return null;
@@ -76,8 +102,10 @@ namespace FrogCore
                 Log(NextKey);
                 gameObject.LocateMyFSM("Conversation Control").SetState("Talk Finish");
             }
+
             yield return null;
         }
+
         private void DecideSound()
         {
             if (SingleClips.ContainsKey(NextKey))
@@ -87,22 +115,26 @@ namespace FrogCore
             else
                 MissingSound();
         }
+
         private void SingleSound()
         {
             Log("Key found in single clips: " + NextKey);
             gameObject.GetComponent<AudioSource>().clip = SingleClips[NextKey];
             gameObject.GetComponent<AudioSource>().Play();
         }
+
         private void MultiSound()
         {
             Log("Key found in multi clips: " + NextKey);
             gameObject.GetComponent<AudioSource>().clip = MultiClips[NextKey][UnityEngine.Random.Range(0, MultiClips[NextKey].Length)];
             gameObject.GetComponent<AudioSource>().Play();
         }
+
         private void MissingSound()
         {
             Log("Key not found in clips: " + NextKey + "    This is not an error");
         }
+
         public void SelectDialogue()
         {
             if (!BoxObject)
@@ -112,22 +144,5 @@ namespace FrogCore
             DecideSound();
             DBox.StartConversation(NextKey, "");
         }
-        public Dictionary<string, AudioClip> SingleClips = new Dictionary<string, AudioClip>() {
-
-            { "PLACEHOLDER_1", null} },
-        };
-        public Dictionary<string, AudioClip[]> MultiClips = new Dictionary<string, AudioClip[]>() {
-
-            { "MULTIHOLDER_1", new AudioClip[]
-            { null} },
-        };
-        public string[] Dialogue = new string[]
-        {
-            "HOLDER_1",
-            "PLACEHOLDER_1",
-            "MULTIHOLDER_1",
-            "HOLDER_2"
-        };
-        public Func<string> DialogueSelector;
     }
 }
