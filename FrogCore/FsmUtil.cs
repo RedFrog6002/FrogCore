@@ -234,129 +234,109 @@ namespace FrogCore.Fsm
         }
         public static void AddAction(this PMFSM fsm, int stateindex, FsmStateAction action)
         {
-            action.Fsm = fsm.Fsm;
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Append(action).ToArray();
+            fsm.GetState(stateindex).AddAction(action);
         }
         public static void AddAction(this PMFSM fsm, string statename, FsmStateAction action)
         {
-            action.Fsm = fsm.Fsm;
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Append(action).ToArray();
+            fsm.GetState(statename).AddAction(action);
         }
         public static void AddAction(this FsmState state, FsmStateAction action)
         {
-            action.Fsm = state.Fsm;
             state.Actions = state.Actions.Append(action).ToArray();
+            action.Init(state);
         }
         public static void InsertAction(this PMFSM fsm, int stateindex, int actionindex, FsmStateAction action)
         {
-            action.Fsm = fsm.Fsm;
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Insert(actionindex, action).ToArray();
+            fsm.GetState(stateindex).InsertAction(actionindex, action);
         }
         public static void InsertAction(this PMFSM fsm, string statename, int actionindex, FsmStateAction action)
         {
-            action.Fsm = fsm.Fsm;
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Insert(actionindex, action).ToArray();
+            fsm.GetState(statename).InsertAction(actionindex, action);
         }
         public static void InsertAction(this FsmState state, int actionindex, FsmStateAction action)
         {
-            action.Fsm = state.Fsm;
             state.Actions = state.Actions.Insert(actionindex, action).ToArray();
+            action.Init(state);
         }
         public static void AddMethod(this PMFSM fsm, string statename, Action method)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Append(new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.AddAction(statename, new CustomCallMethod(method));
         }
         public static void AddMethod(this FsmState state, Action method)
         {
-            state.Actions = state.Actions.Append(new CustomCallMethod(method) { Fsm = state.Fsm }).ToArray();
+            state.AddAction(new CustomCallMethod(method));
         }
         public static void InsertMethod(this PMFSM fsm, int stateindex, int actionindex, Action method)
         {
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(stateindex, actionindex, new CustomCallMethod(method));
         }
         public static void InsertMethod(this PMFSM fsm, string statename, int actionindex, Action method)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(statename, actionindex, new CustomCallMethod(method));
         }
         public static void InsertMethod(this FsmState state, int actionindex, Action method)
         {
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = state.Fsm }).ToArray();
+            state.InsertAction(actionindex, new CustomCallMethod(method));
         }
         public static void AddMethod(this PMFSM fsm, string statename, Action<FsmStateAction> method)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Append(new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.AddAction(statename, new CustomCallMethod(method));
         }
         public static void AddMethod(this FsmState state, Action<FsmStateAction> method)
         {
-            state.Actions = state.Actions.Append(new CustomCallMethod(method) { Fsm = state.Fsm }).ToArray();
+            state.AddAction(new CustomCallMethod(method));
         }
         public static void InsertMethod(this PMFSM fsm, int stateindex, int actionindex, Action<FsmStateAction> method)
         {
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(stateindex, actionindex, new CustomCallMethod(method));
         }
         public static void InsertMethod(this PMFSM fsm, string statename, int actionindex, Action<FsmStateAction> method)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(statename, actionindex, new CustomCallMethod(method));
         }
         public static void InsertMethod(this FsmState state, int actionindex, Action<FsmStateAction> method)
         {
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallMethod(method) { Fsm = state.Fsm }).ToArray();
+            state.InsertAction(actionindex, new CustomCallMethod(method));
         }
         public static void AddCoroutine(this PMFSM fsm, string statename, Func<IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Append(new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.AddAction(statename, new CustomCallCoroutine(coroutine));
         }
         public static void AddCoroutine(this FsmState state, Func<IEnumerator> coroutine)
         {
-            state.Actions = state.Actions.Append(new CustomCallCoroutine(coroutine) { Fsm = state.Fsm }).ToArray();
+            state.AddAction(new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this PMFSM fsm, int stateindex, int actionindex, Func<IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(stateindex, actionindex, new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this PMFSM fsm, string statename, int actionindex, Func<IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(statename, actionindex, new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this FsmState state, int actionindex, Func<IEnumerator> coroutine)
         {
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = state.Fsm }).ToArray();
+            state.InsertAction(actionindex, new CustomCallCoroutine(coroutine));
         }
         public static void AddCoroutine(this PMFSM fsm, string statename, Func<FsmStateAction, IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Append(new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.AddAction(statename, new CustomCallCoroutine(coroutine));
         }
         public static void AddCoroutine(this FsmState state, Func<FsmStateAction, IEnumerator> coroutine)
         {
-            state.Actions = state.Actions.Append(new CustomCallCoroutine(coroutine) { Fsm = state.Fsm }).ToArray();
+            state.AddAction(new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this PMFSM fsm, int stateindex, int actionindex, Func<FsmStateAction, IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(stateindex);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(stateindex, actionindex, new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this PMFSM fsm, string statename, int actionindex, Func<FsmStateAction, IEnumerator> coroutine)
         {
-            FsmState state = fsm.GetState(statename);
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = fsm.Fsm }).ToArray();
+            fsm.InsertAction(statename, actionindex, new CustomCallCoroutine(coroutine));
         }
         public static void InsertCoroutine(this FsmState state, int actionindex, Func<FsmStateAction, IEnumerator> coroutine)
         {
-            state.Actions = state.Actions.Insert(actionindex, new CustomCallCoroutine(coroutine) { Fsm = state.Fsm }).ToArray();
+            state.InsertAction(actionindex, new CustomCallCoroutine(coroutine));
         }
         #endregion
 
