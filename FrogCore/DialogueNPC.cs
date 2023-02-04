@@ -16,133 +16,169 @@ using FrogCore.Fsm;
 namespace FrogCore
 {
     /// <summary>
-    /// Allows for easily adding a npc. Add this monobehavior to a clone of the   "_NPCs\Zote Final Scene\Zote Final"   object in the   "Town"   scene and fill out all of the variables to get it working
+    /// Allows for easily adding a npc.
     /// </summary>
     public class DialogueNPC : MonoBehaviour
     {
-        public string NextKey;
+        internal static GameObject zotePrefab;
 
-        GameObject BoxObject;
-
-        DialogueBox DBox;
-
-        public string NPC_TITLE = "MyNpc";
-
-        public string NPC_DREAM_KEY = "MyNpc_Dreamnail";
-
-
-        public Dictionary<string, AudioClip> SingleClips = new Dictionary<string, AudioClip>()
+        public static DialogueNPC CreateInstance()
         {
-            {"PLACEHOLDER_1", null}
-        };
-
-        public Dictionary<string, AudioClip[]> MultiClips = new Dictionary<string, AudioClip[]>()
-        {
-            {
-                "MULTIHOLDER_1", new AudioClip[]
-                    {null}
-            },
-        };
-
-        public string[] Dialogue = new string[]
-        {
-            "HOLDER_1",
-            "PLACEHOLDER_1",
-            "MULTIHOLDER_1",
-            "HOLDER_2"
-        };
-
-        public Func<string> DialogueSelector;
-
-        public void Log(object o)
-        {
-            Logger.Log($"[{GetType().FullName.Replace(".", "]:[")}] - {o}");
+            GameObject instance = GameObject.Instantiate(zotePrefab);
+            instance.SetActive(true);
+            return instance.AddComponent<DialogueNPC>();
         }
+
+        DialogueCallbackOptions lastResponse = new DialogueCallbackOptions() { Type = DialogueType.Normal, Key = "", Sheet = "", Cost = 0, Response = DialogueResponse.None };
+
+        GameObject DialogueManager;
+        GameObject NormalBox;
+        GameObject YNBox;
+
+        DialogueBox NormalDialogueBox;
+        DialogueBox YNDialogueBox;
+        PlayMakerFSM YNFsm;
+        PlayMakerFSM ManagerNormalFsm;
+        PlayMakerFSM ManagerYNFsm;
+
+        private void TryGetReferences()
+        {
+            try
+            {
+                NormalBox ??= gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
+                DialogueManager ??= NormalBox.transform.parent.gameObject;
+                YNBox = DialogueManager.transform.Find("Text YN").gameObject;
+                NormalDialogueBox ??= NormalBox.GetComponent<DialogueBox>();
+                YNDialogueBox ??= YNBox.GetComponent<DialogueBox>();
+                YNFsm ??= YNBox.LocateMyFSM("Dialogue Page Control");
+                ManagerNormalFsm ??= DialogueManager.LocateMyFSM("Box Open");
+                ManagerYNFsm ??= DialogueManager.LocateMyFSM("Box Open YN");
+            }
+            catch { }
+        }
+
+        public void SetTitle(string key)
+        {
+            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").GetAction<SetFsmString>(4).setValue = key;
+        }
+        public void SetDreamKey(string key)
+        {
+            transform.Find("Dream Dialogue").gameObject.LocateMyFSM("npc_dream_dialogue").FsmVariables.FindFsmString("Convo Name").Value = key;
+        }
+
+        public Func<DialogueCallbackOptions, DialogueOptions> DialogueSelector;
 
         public void SetUp()
         {
-            BoxObject = gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
-            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").RemoveAction(6);
-            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").GetAction<SetFsmString>().setValue = NPC_TITLE;
-            FsmState state = gameObject.LocateMyFSM("Conversation Control").GetState("Precept");
-            transform.Find("Dream Dialogue").gameObject.LocateMyFSM("npc_dream_dialogue").FsmVariables.FindFsmString("Convo Name").Value = NPC_DREAM_KEY;
+            TryGetReferences();
             gameObject.GetComponent<AudioSource>().Stop();
             gameObject.GetComponent<AudioSource>().loop = false;
-            state.Actions = new FsmStateAction[]
-            {
-                new CustomCallMethod(SelectDialogue)
-            };
-            FsmState state2 = gameObject.LocateMyFSM("Conversation Control").CreateState("More");
-            state2.Actions = new FsmStateAction[]
-            {
-                new CustomCallCoroutine(ContinueConvo)
-            };
-            state.ChangeTransition("CONVO_FINISH", state2);
-            state2.AddTransition("CONVO_FINISH", state2);
+            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").RemoveAction(6);
+            FsmState state = gameObject.LocateMyFSM("Conversation Control").GetState("Precept");
+            state.Actions = new FsmStateAction[] { new CustomCallMethod(() => StartCoroutine(SelectDialogue())) };
+            FsmState more = gameObject.LocateMyFSM("Conversation Control").CreateState("More", () => StartCoroutine(SelectDialogue()));
+            FsmState yes = gameObject.LocateMyFSM("Conversation Control").CreateState("MoreYes", () => lastResponse.Response = DialogueResponse.Yes);
+            FsmState no = gameObject.LocateMyFSM("Conversation Control").CreateState("MoreNo", () => lastResponse.Response = DialogueResponse.No);
+            state.ChangeTransition("CONVO_FINISH", more.Name);
+            state.AddTransition("YES", yes.Name);
+            state.AddTransition("NO", no.Name);
+            more.AddTransition("CONVO_FINISH", more.Name);
+            more.AddTransition("YES", yes.Name);
+            more.AddTransition("NO", no.Name);
+            yes.AddTransition("FINISHED", more.Name);
+            no.AddTransition("FINISHED", more.Name);
         }
 
-        private IEnumerator ContinueConvo()
+        private IEnumerator SelectDialogue()
         {
-            yield return null;
-            gameObject.GetComponent<AudioSource>().Stop();
-            int convonum = int.Parse(NextKey.Split('_')[2]);
-            Log(NextKey);
-            Log(NextKey.Split('_')[0] + "_" + NextKey.Split('_')[1] + "_" + (convonum + 1).ToString());
-            if (Dialogue.Contains(NextKey.Split('_')[0] + "_" + NextKey.Split('_')[1] + "_" + (convonum + 1).ToString()))
+            TryGetReferences();
+            DialogueOptions options = DialogueSelector.Invoke(lastResponse);
+            if (options.Wait != null)
             {
-                NextKey = NextKey.Split('_')[0] + "_" + NextKey.Split('_')[1] + "_" + (convonum + 1).ToString();
-                Log(NextKey);
-                yield return new WaitForSeconds(0.1f);
-                DecideSound();
-                yield return new WaitForSeconds(0.1f);
-                DBox.StartConversation(NextKey, "");
+                if (lastResponse.Continue)
+                {
+                    lastResponse.Continue = false;
+                    yield return Down(lastResponse.Type);
+                }
+                yield return options.Wait;
             }
-            else
+            if (!options.Continue)
             {
-                Log(NextKey);
+                if (lastResponse.Continue)
+                    yield return Down(lastResponse.Type);
+                lastResponse = new DialogueCallbackOptions(options);
                 gameObject.LocateMyFSM("Conversation Control").SetState("Talk Finish");
+                yield break;
             }
-
-            yield return null;
-        }
-
-        private void DecideSound()
-        {
-            if (SingleClips.ContainsKey(NextKey))
-                SingleSound();
-            else if (MultiClips.ContainsKey(NextKey))
-                MultiSound();
+            if (!lastResponse.Continue)
+                yield return Up(options.Type);
+            else if (options.Type != lastResponse.Type)
+            {
+                yield return Down(lastResponse.Type);
+                yield return Up(options.Type);
+            }
+            lastResponse = new DialogueCallbackOptions(options);
+            if (options.Type == DialogueType.Normal)
+                NormalDialogueBox.StartConversation(options.Key, options.Sheet);
             else
-                MissingSound();
+            {
+                YNFsm.GetFsmInt("Toll Cost").Value = options.Cost;
+                YNFsm.GetFsmGameObject("Requester").Value = gameObject;
+                YNDialogueBox.StartConversation(options.Key, options.Sheet);
+            }
         }
 
-        private void SingleSound()
+        private IEnumerator Up(DialogueType type)
         {
-            Log("Key found in single clips: " + NextKey);
-            gameObject.GetComponent<AudioSource>().clip = SingleClips[NextKey];
-            gameObject.GetComponent<AudioSource>().Play();
+            if (type == DialogueType.Normal)
+                ManagerNormalFsm.SendEvent("BOX UP");
+            else
+            {
+                ManagerNormalFsm.SendEvent("BOX UP YN");
+                ManagerYNFsm.SendEvent("BOX UP YN");
+            }
+            yield return new WaitForSeconds(0.3f);
         }
-
-        private void MultiSound()
+        private IEnumerator Down(DialogueType type)
         {
-            Log("Key found in multi clips: " + NextKey);
-            gameObject.GetComponent<AudioSource>().clip = MultiClips[NextKey][UnityEngine.Random.Range(0, MultiClips[NextKey].Length)];
-            gameObject.GetComponent<AudioSource>().Play();
+            if (type == DialogueType.Normal)
+                ManagerNormalFsm.SendEvent("BOX DOWN");
+            else
+            {
+                ManagerNormalFsm.SendEvent("BOX DOWN YN");
+                ManagerYNFsm.SendEvent("BOX DOWN YN");
+            }
+            yield return new WaitForSeconds(0.3f);
         }
-
-        private void MissingSound()
-        {
-            Log("Key not found in clips: " + NextKey + "    This is not an error");
-        }
-
-        public void SelectDialogue()
-        {
-            if (!BoxObject)
-                BoxObject = gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
-            DBox = BoxObject.GetOrAddComponent<DialogueBox>();
-            NextKey = DialogueSelector.Invoke();
-            DecideSound();
-            DBox.StartConversation(NextKey, "");
-        }
+    }
+    public struct DialogueOptions
+    {
+        public DialogueType Type;
+        public string Key;
+        public string Sheet;
+        public int Cost;
+        public bool Continue;
+        public IEnumerator Wait;
+    }
+    public struct DialogueCallbackOptions
+    {
+        internal DialogueCallbackOptions(DialogueOptions options) { Type = options.Type; Key = options.Key; Sheet = options.Sheet; Cost = options.Cost; Continue = options.Continue; Response = DialogueResponse.None; }
+        public DialogueType Type;
+        public string Key;
+        public string Sheet;
+        public int Cost;
+        public bool Continue;
+        public DialogueResponse Response;
+    }
+    public enum DialogueType
+    {
+        Normal,
+        YesNo
+    }
+    public enum DialogueResponse
+    {
+        None,
+        Yes,
+        No
     }
 }

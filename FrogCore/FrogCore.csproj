@@ -12,7 +12,7 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
-    <HollowKnightRefs Condition="$([MSBuild]::IsOSPlatform('Windows'))">E:/GOG/Hollow Knight 1.5 Modded/Hollow Knight_Data/Managed/</HollowKnightRefs>
+    <HollowKnightRefs Condition="$([MSBuild]::IsOSPlatform('Windows'))">C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\</HollowKnightRefs>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -36,9 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Extensions.cs" />
-    <Compile Include="ExtraHooks.cs" />
-    <Compile Include="InventoryHelper.cs" />
-    <Compile Include="InventoryPanel.cs" />
+    <Compile Include="FrogCore.cs" />
     <Compile Include="MethodBehaviour.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="FsmUtil.cs" />

@@ -14,65 +14,6 @@ using System.Reflection;
 namespace FrogCore
 {
     /// <summary>
-    /// UNFINISHED! DO NOT USE!
-    /// Allows for easily changing the layout of journal entries
-    /// </summary>
-    public static class JournalGroup
-    {
-        public static readonly List<(List<string>, EntryFormat)> Groups = new List<(List<string>, EntryFormat)>() { (DefaultEntries, EntryFormat.List) };
-        public static readonly List<string> DefaultEntries = new List<string>();
-        static JournalGroup()
-        {
-            foreach (FieldInfo fi in typeof(PlayerData).GetFields().Where(fi => fi.Name.StartsWith("Kills")))
-                DefaultEntries.Add(fi.Name.Substring(5));
-        }
-        /// <summary>
-        /// set aside some entries to a certain format
-        /// </summary>
-        /// <param name="entryPDNames"></param>
-        /// <param name="groupFormat"></param>
-        public static void CreateJournalGroup(IEnumerable<string> entryPDNames, EntryFormat groupFormat = EntryFormat.List)
-        {
-            foreach ((List<string> list, EntryFormat _) in Groups.Where(e => e.Item1 != null && e.Item1.Any(s => entryPDNames.Contains(s))))
-                foreach (string s in entryPDNames)
-                    if (list.Contains(s))
-                        list.Remove(s);
-            Groups.Add((entryPDNames.ToList(), groupFormat));
-            ClearUnused();
-        }
-        private static void ClearUnused()
-        {
-            for (int i = Groups.Count; i > 0; i++)
-            {
-                (List<string> list, EntryFormat format) = Groups[i - 1];
-                if ((list == null || list.Count == 0) && list != DefaultEntries)
-                    Groups.RemoveAt(i - 1);
-            }
-        }
-    }
-    /// <summary>
-    /// Used to change the format of journal entries
-    /// </summary>
-    public enum EntryFormat
-    {
-        /// <summary>
-        /// Use the original List format of the game
-        /// </summary>
-        List,
-        /// <summary>
-        /// Use a format similar to the inventory or charms list
-        /// </summary>
-        Inventory,
-        /// <summary>
-        /// Use a clone of the original list specifically for this group
-        /// </summary>
-        OwnList,
-        /// <summary>
-        /// Use a clone of a format similar to the inventory specifically for this group
-        /// </summary>
-        OwnInventory
-    }
-    /// <summary>
     /// Allows for easily adding journal entries. Just use the static method or create a new JournalHelper to add one
     /// </summary>
     public class JournalHelper
@@ -183,7 +124,6 @@ namespace FrogCore
         {
             return new JournalHelper(portrait, picture, jpd, names, insertafter, entryType, customentrysprite, addtracker, addhooks);
         }
-        //int panelindex;
         public JournalHelper(Sprite portrait, Sprite picture, JournalPlayerData jpd, JournalNameStrings names, string insertafter = null, EntryType entryType = EntryType.Normal, Sprite customentrysprite = null, bool addtracker = true, bool extrahooks = true)
         {
             bool hook = true;
@@ -194,7 +134,6 @@ namespace FrogCore
             entrynumber = CustomEntries;
             InsertAfter = insertafter;
             EType = entryType;
-            //InventoryHelper.AddInventoryPanel(out panelindex);
             if (hook)
             {
                 On.JournalList.BuildEnemyList += JournalList_BuildEnemyList;
