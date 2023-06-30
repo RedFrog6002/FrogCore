@@ -19,6 +19,59 @@ namespace FrogCore
     public class JournalHelper
     {
         #region Extentions
+        public static void RecordJournalEntry(string playerDataName)
+        {
+            PlayerData playerData = GameManager.instance.playerData;
+            string killedName = "killed" + playerDataName;
+            string killsName = "kills" + playerDataName;
+            string newName = "newData" + playerDataName;
+            bool firstKill = false;
+            if (!playerData.GetBool(killedName))
+            {
+                firstKill = true;
+                playerData.SetBool(killedName, true);
+                playerData.SetBool(newName, true);
+            }
+            bool lastKill = false;
+            int killsLeft = playerData.GetInt(killsName);
+            if (killsLeft > 0)
+            {
+                killsLeft--;
+                playerData.SetInt(killsName, killsLeft);
+                if (killsLeft <= 0)
+                    lastKill = true;
+            }
+            if (playerData.GetBool("hasJournal"))
+            {
+                if (lastKill)
+                    playerData.SetInt("journalEntriesCompleted", playerData.GetInt("journalEntriesCompleted") + 1);
+                else if (firstKill)
+                    playerData.SetInt("journalNotesCompleted", playerData.GetInt("journalNotesCompleted") + 1);
+                if (lastKill || firstKill)
+                {
+                    try
+                    {
+                        GameObject journalUpdateMessageSpawned = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned");
+                        if (!journalUpdateMessageSpawned)
+                        {
+                            journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(notificationPrefab);
+                            journalUpdateMessageSpawned.SetActive(false);
+                            ReflectionHelper.SetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned", journalUpdateMessageSpawned);
+                        }
+                        if (journalUpdateMessageSpawned.activeSelf)
+                            journalUpdateMessageSpawned.SetActive(false);
+                        journalUpdateMessageSpawned.SetActive(true);
+                        PlayMakerFSM playMakerFSM = journalUpdateMessageSpawned.LocateMyFSM("Journal Msg");
+                        playMakerFSM.FsmVariables.FindFsmBool("Full").Value = lastKill;
+                        playMakerFSM.FsmVariables.FindFsmBool("Should Recycle").Value = true;
+                    }
+                    catch (Exception e)
+                    {
+                        FrogCore.instance.Log("Uh oh a nre happened: " + e);
+                    }
+                }
+            }
+        }
         public void RecordJournalEntry()
         {
             string playerDataName = "CustomJournal" + entrynumber;
@@ -50,38 +103,25 @@ namespace FrogCore
                     playerData.SetInt("journalNotesCompleted", playerData.GetInt("journalNotesCompleted") + 1);
                 if (lastKill || firstKill)
                 {
-                    GameObject journalUpdateMessageSpawned = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned");
-                    if (!journalUpdateMessageSpawned && !notificationPrefab)
+                    try
                     {
-                        foreach (EnemyDeathEffects ede in Resources.FindObjectsOfTypeAll<EnemyDeathEffects>())
+                        GameObject journalUpdateMessageSpawned = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned");
+                        if (!journalUpdateMessageSpawned)
                         {
-                            GameObject journalUpdateMessagePrefab = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>(ede, "journalUpdateMessagePrefab");
-                            if (journalUpdateMessagePrefab)
-                            {
-                                notificationPrefab = GameObject.Instantiate(journalUpdateMessagePrefab);
-                                notificationPrefab.name = journalUpdateMessagePrefab.name;
-                                notificationPrefab.SetActive(false);
-                                GameObject.DontDestroyOnLoad(notificationPrefab);
-                                journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(journalUpdateMessagePrefab);
-                                journalUpdateMessageSpawned.SetActive(false);
-                                ReflectionHelper.SetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned", journalUpdateMessageSpawned);
-                                break;
-                            }
+                            journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(notificationPrefab);
+                            journalUpdateMessageSpawned.SetActive(false);
+                            ReflectionHelper.SetField<EnemyDeathEffects, GameObject>("journalUpdateMessageSpawned", journalUpdateMessageSpawned);
                         }
-                    }
-                    else if (!journalUpdateMessageSpawned && notificationPrefab)
-                    {
-                        journalUpdateMessageSpawned = UnityEngine.Object.Instantiate<GameObject>(notificationPrefab);
-                        journalUpdateMessageSpawned.SetActive(false);
-                    }
-                    if (journalUpdateMessageSpawned)
-                    {
                         if (journalUpdateMessageSpawned.activeSelf)
                             journalUpdateMessageSpawned.SetActive(false);
                         journalUpdateMessageSpawned.SetActive(true);
                         PlayMakerFSM playMakerFSM = journalUpdateMessageSpawned.LocateMyFSM("Journal Msg");
                         playMakerFSM.FsmVariables.FindFsmBool("Full").Value = lastKill;
                         playMakerFSM.FsmVariables.FindFsmBool("Should Recycle").Value = true;
+                    }
+                    catch (Exception e)
+                    {
+                        FrogCore.instance.Log("Uh oh a nre happened: " + e);
                     }
                 }
             }
@@ -169,7 +209,7 @@ namespace FrogCore
         public int entrynumber { get; private set; } = 0;
         public static int CustomEntries { get; private set; } = 0;
         public static List<JournalTracker> trackers { get; private set; } = new List<JournalTracker>();
-        private static GameObject notificationPrefab;
+        public static GameObject notificationPrefab { get; internal set; }
         #endregion
         #region Hooks
         #region other hooks
@@ -191,6 +231,7 @@ namespace FrogCore
         }
         private static void JournalList_BuildEnemyList_Static(On.JournalList.orig_BuildEnemyList orig, JournalList self)
         {
+            self.itemCount = -1;
             orig(self);
             try
             {

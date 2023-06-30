@@ -20,7 +20,7 @@ namespace FrogCore
     /// </summary>
     public class DialogueNPC : MonoBehaviour
     {
-        internal static GameObject zotePrefab;
+        public static GameObject zotePrefab { get; internal set; }
 
         public static DialogueNPC CreateInstance()
         {
