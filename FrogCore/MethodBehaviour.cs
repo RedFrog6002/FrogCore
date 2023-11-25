@@ -32,18 +32,18 @@ namespace FrogCore
             if (method != null) return (t1) => { method(gameObject, t1); };
             return (_) => { };
         }
-        private void Awake() => Call(AwakeMethod);
-        private void Start() => Call(StartMethod);
-        private void OnEnable() => Call(OnDisableMethod);
-        private void OnDisable() => Call(OnDisableMethod);
-        private void Update() => Call(UpdateMethod);
-        private void FixedUpdate() => Call(FixedUpdateMethod);
-        private void LateUpdate() => Call(LateUpdateMethod);
-        private void OnTriggerEnter2D(Collider2D col) => Call(OnTriggerEnter2DMethod);
-        private void OnTriggerExit2D(Collider2D col) => Call(OnTriggerExit2DMethod);
-        private void OnTriggerStay2D(Collider2D col) => Call(OnTriggerStay2DMethod);
-        private void OnCollisionEnter2D(Collision2D col) => Call(OnCollisionEnter2DMethod);
-        private void OnCollisionExit2D(Collision2D col) => Call(OnCollisionExit2DMethod);
-        private void OnCollisionStay2D(Collision2D col) => Call(OnCollisionStay2DMethod);
+        private void Awake() => Call(AwakeMethod)();
+        private void Start() => Call(StartMethod)();
+        private void OnEnable() => Call(OnDisableMethod)();
+        private void OnDisable() => Call(OnDisableMethod)();
+        private void Update() => Call(UpdateMethod)();
+        private void FixedUpdate() => Call(FixedUpdateMethod)();
+        private void LateUpdate() => Call(LateUpdateMethod)();
+        private void OnTriggerEnter2D(Collider2D col) => Call(OnTriggerEnter2DMethod)(col);
+        private void OnTriggerExit2D(Collider2D col) => Call(OnTriggerExit2DMethod)(col);
+        private void OnTriggerStay2D(Collider2D col) => Call(OnTriggerStay2DMethod)(col);
+        private void OnCollisionEnter2D(Collision2D col) => Call(OnCollisionEnter2DMethod)(col);
+        private void OnCollisionExit2D(Collision2D col) => Call(OnCollisionExit2DMethod)(col);
+        private void OnCollisionStay2D(Collision2D col) => Call(OnCollisionStay2DMethod)(col);
     }
 }

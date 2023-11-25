@@ -41,18 +41,28 @@ namespace FrogCore
         PlayMakerFSM ManagerNormalFsm;
         PlayMakerFSM ManagerYNFsm;
 
+        SetTextMeshProGameText YesSetText;
+        SetTextMeshProGameText NoSetText;
+
         private void TryGetReferences()
         {
             try
             {
                 NormalBox ??= gameObject.LocateMyFSM("Conversation Control").GetState("Repeat").GetAction<CallMethodProper>(0).gameObject.GameObject.Value;
-                DialogueManager ??= NormalBox.transform.parent.gameObject;
-                YNBox = DialogueManager.transform.Find("Text YN").gameObject;
-                NormalDialogueBox ??= NormalBox.GetComponent<DialogueBox>();
-                YNDialogueBox ??= YNBox.GetComponent<DialogueBox>();
-                YNFsm ??= YNBox.LocateMyFSM("Dialogue Page Control");
-                ManagerNormalFsm ??= DialogueManager.LocateMyFSM("Box Open");
-                ManagerYNFsm ??= DialogueManager.LocateMyFSM("Box Open YN");
+                DialogueManager ??= NormalBox?.transform.parent.gameObject;
+                YNBox ??= DialogueManager?.transform.Find("Text YN").gameObject;
+                NormalDialogueBox ??= NormalBox?.GetComponent<DialogueBox>();
+                YNDialogueBox ??= YNBox?.GetComponent<DialogueBox>();
+                YNFsm ??= YNBox?.LocateMyFSM("Dialogue Page Control");
+                ManagerNormalFsm ??= DialogueManager?.LocateMyFSM("Box Open");
+                ManagerYNFsm ??= DialogueManager?.LocateMyFSM("Box Open YN");
+                YesSetText ??= YNBox?.transform.Find("UI List/Yes").GetComponent<SetTextMeshProGameText>();
+                NoSetText ??= YNBox?.transform.Find("UI List/No").GetComponent<SetTextMeshProGameText>();
+
+                if (YesSetText && !YesSetText.GetComponent<MethodBehaviour>())
+                    YesSetText.gameObject.AddComponent<MethodBehaviour>().OnEnableMethod = _ => YesSetText.UpdateText();
+                if (NoSetText && !NoSetText.GetComponent<MethodBehaviour>())
+                    NoSetText.gameObject.AddComponent<MethodBehaviour>().OnEnableMethod = _ => NoSetText.UpdateText();
             }
             catch { }
         }
@@ -61,9 +71,18 @@ namespace FrogCore
         {
             gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").GetAction<SetFsmString>(4).setValue = key;
         }
-        public void SetDreamKey(string key)
+        public void SetTitleActive(bool active)
+        {
+            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").GetAction<ActivateGameObject>(2).activate.Value = active;
+        }
+        public void SetDreamKey(string key) // backwards compatibility
         {
             transform.Find("Dream Dialogue").gameObject.LocateMyFSM("npc_dream_dialogue").FsmVariables.FindFsmString("Convo Name").Value = key;
+        }
+        public void SetDreamKey(string key, string sheet)
+        {
+            transform.Find("Dream Dialogue").gameObject.LocateMyFSM("npc_dream_dialogue").FsmVariables.FindFsmString("Convo Name").Value = key;
+            transform.Find("Dream Dialogue").gameObject.LocateMyFSM("npc_dream_dialogue").FsmVariables.FindFsmString("Sheet Name").Value = sheet;
         }
 
         public Func<DialogueCallbackOptions, DialogueOptions> DialogueSelector;
@@ -71,14 +90,16 @@ namespace FrogCore
         public void SetUp()
         {
             TryGetReferences();
+            PlayMakerFSM fsm = gameObject.LocateMyFSM("Conversation Control");
             gameObject.GetComponent<AudioSource>().Stop();
             gameObject.GetComponent<AudioSource>().loop = false;
-            gameObject.LocateMyFSM("Conversation Control").GetState("Convo Choice").RemoveAction(6);
-            FsmState state = gameObject.LocateMyFSM("Conversation Control").GetState("Precept");
+            fsm.GetState("Convo Choice").RemoveAction(6);
+            fsm.GetState("Box Up").RemoveAction(0);
+            FsmState state = fsm.GetState("Precept");
             state.Actions = new FsmStateAction[] { new CustomCallMethod(() => StartCoroutine(SelectDialogue())) };
-            FsmState more = gameObject.LocateMyFSM("Conversation Control").CreateState("More", () => StartCoroutine(SelectDialogue()));
-            FsmState yes = gameObject.LocateMyFSM("Conversation Control").CreateState("MoreYes", () => lastResponse.Response = DialogueResponse.Yes);
-            FsmState no = gameObject.LocateMyFSM("Conversation Control").CreateState("MoreNo", () => lastResponse.Response = DialogueResponse.No);
+            FsmState more = fsm.CreateState("More", () => StartCoroutine(SelectDialogue()));
+            FsmState yes = fsm.CreateState("MoreYes", () => lastResponse.Response = DialogueResponse.Yes);
+            FsmState no = fsm.CreateState("MoreNo", () => lastResponse.Response = DialogueResponse.No);
             state.ChangeTransition("CONVO_FINISH", more.Name);
             state.AddTransition("YES", yes.Name);
             state.AddTransition("NO", no.Name);
@@ -122,6 +143,14 @@ namespace FrogCore
                 NormalDialogueBox.StartConversation(options.Key, options.Sheet);
             else
             {
+                if (!string.IsNullOrEmpty(options.YesOverrideKey))
+                    YesSetText.convName = options.YesOverrideKey;
+                if (!string.IsNullOrEmpty(options.YesOverrideSheet))
+                    YesSetText.sheetName = options.YesOverrideSheet;
+                if (!string.IsNullOrEmpty(options.NoOverrideKey))
+                    NoSetText.convName = options.NoOverrideKey;
+                if (!string.IsNullOrEmpty(options.NoOverrideSheet))
+                    NoSetText.sheetName = options.NoOverrideSheet;
                 YNFsm.GetFsmInt("Toll Cost").Value = options.Cost;
                 YNFsm.GetFsmGameObject("Requester").Value = gameObject;
                 YNDialogueBox.StartConversation(options.Key, options.Sheet);
@@ -150,6 +179,13 @@ namespace FrogCore
             }
             yield return new WaitForSeconds(0.3f);
         }
+        private void ResetDialogueOptions()
+        {
+            YesSetText.convName = "YES";
+            YesSetText.sheetName = "Prompts";
+            NoSetText.convName = "NO";
+            NoSetText.sheetName = "Prompts";
+        }
     }
     public struct DialogueOptions
     {
@@ -158,16 +194,24 @@ namespace FrogCore
         public string Sheet;
         public int Cost;
         public bool Continue;
+        public string YesOverrideKey;
+        public string YesOverrideSheet;
+        public string NoOverrideKey;
+        public string NoOverrideSheet;
         public IEnumerator Wait;
     }
     public struct DialogueCallbackOptions
     {
-        internal DialogueCallbackOptions(DialogueOptions options) { Type = options.Type; Key = options.Key; Sheet = options.Sheet; Cost = options.Cost; Continue = options.Continue; Response = DialogueResponse.None; }
+        internal DialogueCallbackOptions(DialogueOptions options) { Type = options.Type; Key = options.Key; Sheet = options.Sheet; Cost = options.Cost; Continue = options.Continue; YesOverrideKey = options.YesOverrideKey; YesOverrideSheet = options.YesOverrideSheet; NoOverrideKey = options.NoOverrideKey; NoOverrideSheet = options.NoOverrideSheet; Response = DialogueResponse.None; }
         public DialogueType Type;
         public string Key;
         public string Sheet;
         public int Cost;
         public bool Continue;
+        public string YesOverrideKey;
+        public string YesOverrideSheet;
+        public string NoOverrideKey;
+        public string NoOverrideSheet;
         public DialogueResponse Response;
     }
     public enum DialogueType
