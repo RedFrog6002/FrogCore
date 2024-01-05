@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Modding;
 using System.Reflection;
 using UnityEngine;
-using FrogCore.NPCv2;
+//using FrogCore.NPCv2;
 
 namespace FrogCore
 {

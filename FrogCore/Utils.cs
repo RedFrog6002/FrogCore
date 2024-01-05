@@ -15,9 +15,6 @@ namespace FrogCore
         private static FieldInfo[] spriteDefinitionFields;
         private static Type spriteDefinitionType;
 
-        public static Dictionary<string, tk2dSpriteAnimation> tk2dAnimations = new Dictionary<string, tk2dSpriteAnimation>();
-        public static Dictionary<string, tk2dSpriteCollectionData> tk2dCollections = new Dictionary<string, tk2dSpriteCollectionData>();
-
 
         #region game object
 
@@ -196,7 +193,6 @@ namespace FrogCore
                 newAnimation.clips[i] = new tk2dSpriteAnimationClip(newAnimation.clips[i]);
             }
 
-            tk2dAnimations.Add(name, newAnimation);
             newAnimation.name = name + " Sprite Animation";
             UObject.DontDestroyOnLoad(newAnimation);
             return newAnimation;
@@ -223,7 +219,6 @@ namespace FrogCore
                 newCollection.spriteDefinitions[i] = definition;
             }
 
-            tk2dCollections.Add(name, newCollection);
             newCollection.spriteCollectionName = name;
             newCollection.name = name + " Sprite Collection";
             UObject.DontDestroyOnLoad(newCollection);
