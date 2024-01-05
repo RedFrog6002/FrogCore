@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Modding;
 using System.Reflection;
 using UnityEngine;
+using FrogCore.NPCv2;
 
 namespace FrogCore
 {
@@ -20,6 +21,7 @@ namespace FrogCore
         {
             return new() { 
                 ("Town", "_NPCs/Zote Final Scene/Zote Final"),
+                ("Room_Charm_Shop", "Shop Menu"),
                 ("Crossroads_01", "Uninfected Parent/Zombie Runner 1") };
         }
 
@@ -27,7 +29,10 @@ namespace FrogCore
         {
             instance = this;
             DialogueNPC.zotePrefab = preloadedObjects["Town"]["_NPCs/Zote Final Scene/Zote Final"];
+            CustomShop.shopPrefab = preloadedObjects["Room_Charm_Shop"]["Shop Menu"];
             JournalHelper.notificationPrefab = ReflectionHelper.GetField<EnemyDeathEffects, GameObject>(preloadedObjects["Crossroads_01"]["Uninfected Parent/Zombie Runner 1"].GetComponent<EnemyDeathEffects>(), "journalUpdateMessagePrefab");
+
+            //NPCManager.SetUpPrefabs(DialogueNPC.zotePrefab, CustomShop.shopPrefab);
         }
     }
 }

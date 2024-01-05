@@ -11,8 +11,14 @@
     <AssemblyName>FrogCore</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-    <HollowKnightRefs Condition="$([MSBuild]::IsOSPlatform('Windows'))">C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\</HollowKnightRefs>
+    <TargetFrameworkProfile /><HollowKnightRefs Condition="Exists('/home/saleh/.steam/steam/steamapps/common/Hollow Knight/hollow_knight_Data/Managed/')">/home/saleh/.steam/steam/steamapps/common/Hollow Knight/hollow_knight_Data/Managed/</HollowKnightRefs>
+		<ExportDir Condition="Exists('/home/saleh/Downloads/')">/home/saleh/Downloads/</ExportDir>
+		<HollowKnightRefs Condition="Exists('/home/sfg/Games/gog/hollow-knight/game/Hollow Knight_Data/Managed/')">/home/sfg/Games/gog/hollow-knight/game/Hollow Knight_Data/Managed/</HollowKnightRefs>
+		<HollowKnightRefs Condition="Exists('E:/GOG/Hollow Knight 1.5 Modded/Hollow Knight_Data/Managed/')">E:/GOG/Hollow Knight 1.5 Modded/Hollow Knight_Data/Managed/</HollowKnightRefs>
+		<HollowKnightRefs Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed/')">C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed/</HollowKnightRefs>
+		<ExportDir Condition="Exists('/home/sfg/Documents/Projects/__Exports/')">/home/sfg/Documents/Projects/__Exports/</ExportDir>
+		<ExportDir Condition="Exists('E:\Documents\Projects\__Exports')">E:\Documents\Projects\__Exports</ExportDir>
+		<ExportDir Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\Mods')">C:\Program Files (x86)\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\Mods</ExportDir>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -35,14 +41,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Extensions.cs" />
-    <Compile Include="FrogCore.cs" />
-    <Compile Include="MethodBehaviour.cs" />
-    <Compile Include="Utils.cs" />
-    <Compile Include="FsmUtil.cs" />
-    <Compile Include="JournalHelper.cs" />
-    <Compile Include="DialogueNPC.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="*.cs" />
+    <!--Compile Include="NPCv2\*.cs" />
+    <Compile Include="NPCv2\Prompts\*.cs" /-->
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -93,13 +94,37 @@
     </Reference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PreBuildEvent>
-    </PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
-  </PropertyGroup>
+
+	<Target Name="CopyMod" AfterTargets="PostBuildEvent">
+		<RemoveDir Condition="Exists('$(ExportDir)/$(TargetName)/')" Directories="$(ExportDir)/$(TargetName)/" />
+		<MakeDir Directories="$(ExportDir)/$(TargetName)/" />
+		<MakeDir Directories="$(ExportDir)/$(TargetName)/zip/" />
+		<MakeDir Condition="!Exists('$(HollowKnightRefs)/Mods/$(TargetName)/')" Directories="$(HollowKnightRefs)/Mods/$(TargetName)/" />
+
+		<Copy Condition="'$(DocumentationFile)'!=''" SourceFiles="$(TargetPath);$(TargetDir)/$(TargetName).pdb;$(TargetDir)/$(TargetName).xml" DestinationFolder="$(HollowKnightRefs)/Mods/$(TargetName)/" />
+		<Copy Condition="'$(DocumentationFile)'==''" SourceFiles="$(TargetPath);$(TargetDir)/$(TargetName).pdb" DestinationFolder="$(HollowKnightRefs)/Mods/$(TargetName)/" />
+
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ExportDir)/$(TargetName)/" />
+
+		<Copy Condition="'$(DocumentationFile)'!=''" SourceFiles="README.md;$(TargetPath);$(TargetDir)/$(TargetName).pdb;$(TargetDir)/$(TargetName).xml" DestinationFolder="$(ExportDir)/$(TargetName)/zip/" />
+		<Copy Condition="'$(DocumentationFile)'==''" SourceFiles="README.md;$(TargetPath);$(TargetDir)/$(TargetName).pdb" DestinationFolder="$(ExportDir)/$(TargetName)/zip/" />
+
+		<ZipDirectory SourceDirectory="$(ExportDir)/$(TargetName)/zip/" DestinationFile="$(ExportDir)/$(TargetName)/$(TargetName).zip" />
+		<RemoveDir Directories="$(ExportDir)/$(TargetName)/zip/" />
+
+		<PropertyGroup>
+			<OutputFileString>SHA256 - $(AssemblyTitle).dll, Version $(AssemblyVersion):</OutputFileString>
+		</PropertyGroup>
+		<GetFileHash Files="$(ExportDir)/$(TargetName)/$(TargetName).dll" Algorithm="SHA256">
+			<Output TaskParameter="Items" ItemName="FilesWithHashes" />
+		</GetFileHash>
+		<PropertyGroup>
+			<OutputZipString>SHA256 - $(AssemblyTitle).zip:</OutputZipString>
+		</PropertyGroup>
+		<GetFileHash Files="$(ExportDir)/$(TargetName)/$(TargetName).zip" Algorithm="SHA256">
+			<Output TaskParameter="Items" ItemName="ZipFilesWithHashes" />
+		</GetFileHash>
+		<WriteLinesToFile File="$(ExportDir)/$(TargetName)/SHA.txt" Lines="$(OutputFileString);@(FilesWithHashes->'%(FileHash)');$(OutputZipString);@(ZipFilesWithHashes->'%(FileHash)')" Overwrite="true" Encoding="UTF-8" />
+	</Target>
   <ProjectExtensions />
 </Project>

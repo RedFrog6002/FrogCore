@@ -113,6 +113,7 @@ namespace FrogCore
         private IEnumerator SelectDialogue()
         {
             TryGetReferences();
+            ResetDialogueOptions();
             DialogueOptions options = DialogueSelector.Invoke(lastResponse);
             if (options.Wait != null)
             {
@@ -151,6 +152,8 @@ namespace FrogCore
                     NoSetText.convName = options.NoOverrideKey;
                 if (!string.IsNullOrEmpty(options.NoOverrideSheet))
                     NoSetText.sheetName = options.NoOverrideSheet;
+                YesSetText.UpdateText();
+                NoSetText.UpdateText();
                 YNFsm.GetFsmInt("Toll Cost").Value = options.Cost;
                 YNFsm.GetFsmGameObject("Requester").Value = gameObject;
                 YNDialogueBox.StartConversation(options.Key, options.Sheet);
@@ -185,6 +188,8 @@ namespace FrogCore
             YesSetText.sheetName = "Prompts";
             NoSetText.convName = "NO";
             NoSetText.sheetName = "Prompts";
+            YesSetText.UpdateText();
+            NoSetText.UpdateText();
         }
     }
     public struct DialogueOptions
