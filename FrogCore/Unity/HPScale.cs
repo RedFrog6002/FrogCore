@@ -20,11 +20,11 @@ public struct HPScale
 
     public int GetScaledHP()
     {
-        //if (BossSceneController.IsBossScene)
-        if (true)
+        if (BossSceneController.IsBossScene)
+        //if (true)
         {
-            //switch (BossSceneController.Instance.BossLevel)
-            switch (-1)
+            switch (BossSceneController.Instance.BossLevel)
+            //switch (-1)
             {
                 case 0:
                     if (level1 <= 0)

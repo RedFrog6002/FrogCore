@@ -37,7 +37,7 @@ namespace FrogCore.Unity
             damagedThisFrame = true;
             if (!isSpellVulnerable && (healthManager && healthManager.IsInvincible))
                 return;
-            //impactClipTable.SpawnAndPlayOneShot(audioPlayerPrefab, base.transform.position);
+            impactClipTable.SpawnAndPlayOneShot(audioPlayerPrefab, base.transform.position);
             if (spriteFlash)
             {
                 switch (extraDamageType)
