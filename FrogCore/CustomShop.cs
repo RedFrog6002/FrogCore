@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using FrogCore.Fsm;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
@@ -14,7 +15,7 @@ namespace FrogCore
         public ShopMenuStock shop;
         public PlayMakerFSM fsm;
 
-        public CustomShop(CustomItemStats[] items)
+        public CustomShop(IEnumerable<CustomItemStats> items)
         {
             shop = GameObject.Instantiate(shopPrefab).GetComponent<ShopMenuStock>();
             fsm = shop.gameObject.LocateMyFSM("shop_control");
@@ -25,12 +26,14 @@ namespace FrogCore
             shop.altPlayerDataBoolAlt = "";
             shop.masterList = null;
             GameObject prefab = shop.stock[0];
-            shop.stock = new GameObject[items.Length];
-            for (int i = 0; i < items.Length; i++)
+            List<GameObject> stock = new List<GameObject>();
+
+            IEnumerator<CustomItemStats> enumerator = items.GetEnumerator();
+            while (enumerator.MoveNext())
             {
                 GameObject itemGo = GameObject.Instantiate(prefab);
                 ShopItemStats item = itemGo.GetComponent<ShopItemStats>();
-                CustomItemStats custom = items[i];
+                CustomItemStats custom = enumerator.Current;
 
                 item.playerDataBoolName = custom.playerDataBoolName;
                 item.nameConvo = custom.nameConvo;
@@ -48,13 +51,14 @@ namespace FrogCore
                 item.relicPDInt = custom.relicPDInt;
                 item.notchCostBool = custom.notchCostInt;
                 item.cost = custom.cost;
-                item.itemNumber = i;
+                item.itemNumber = stock.Count;
                 item.canBuy = custom.canBuy;
                 itemGo.transform.Find("Item Sprite").GetComponent<SpriteRenderer>().sprite = custom.sprite;
 
-                shop.stock[i] = itemGo;
+                stock.Add(itemGo);
             }
 
+            shop.stock = stock.ToArray();
             shop.gameObject.SetActive(true);
         }
 

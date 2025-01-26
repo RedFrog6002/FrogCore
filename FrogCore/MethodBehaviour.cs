@@ -34,7 +34,7 @@ namespace FrogCore
         }
         private void Awake() => Call(AwakeMethod)();
         private void Start() => Call(StartMethod)();
-        private void OnEnable() => Call(OnDisableMethod)();
+        private void OnEnable() => Call(OnEnableMethod)();
         private void OnDisable() => Call(OnDisableMethod)();
         private void Update() => Call(UpdateMethod)();
         private void FixedUpdate() => Call(FixedUpdateMethod)();
