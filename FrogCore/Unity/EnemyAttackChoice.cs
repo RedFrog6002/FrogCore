@@ -32,6 +32,14 @@ public class EnemyAttackChoice
             this.maxRepeats = maxRepeats;
         }
 
+        public AttackEntry()
+        {
+            name = "";
+            chance = 0f;
+            maxMisses = -1;
+            maxRepeats = -1;
+        }
+
         public IEnumerator GenerateAttack() => generator();
 
         public float GetChance() => chance;

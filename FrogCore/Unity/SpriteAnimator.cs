@@ -19,11 +19,6 @@ public class SpriteAnimator : MonoBehaviour
     private SpriteRenderer _sprite;
     private float clock = 0f;
 
-    //public ScriptableObjectWrapper<SpriteAnimation>[] Testanimations = new ScriptableObjectWrapper<SpriteAnimation>[0];
-    //public ScriptableObjectWrapper<SpriteAnimation> test2 = new ScriptableObjectWrapper<SpriteAnimation>();
-    //public SpriteAnimationWrapper[] animations2 = new SpriteAnimationWrapper[0];
-    //public SpriteAnimationWrapper animations3 = new SpriteAnimationWrapper();
-
 
     void Awake()
     {
